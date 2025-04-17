@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF Viewer with Text Highlighting</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="OutlineView.css">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('outline')">Outline</button>
+                <button class="tab" onclick="switchTab('search')">Search</button>
+            </div>
+            <div class="tab-content active" id="outline"></div>
+            <div class="tab-content" id="search">
+                <input type="text" id="search-input" placeholder="Search...">
+                <div id="search-results"></div>
+            </div>
+        </div>
+        <div class="main-content">
+            <div id="pdf-container">
+                <canvas id="pdf-viewer"></canvas>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+    <script src="OutlineView.js"></script>
+    <script src="init.js"></script>
+    <script>
+        // Initialize after everything is loaded
+        window.addEventListener('load', () => {
+            initOutline();
+        });
+    </script>
+</body>
+</html> 

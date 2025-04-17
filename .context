@@ -1,0 +1,55 @@
+Project: PDF Viewer with Text Highlighting
+Description: A FastAPI and React-based PDF viewer application that loads PDFs and highlights text regions based on coordinate data from a JSON file.
+
+Key Files:
+- static/app.js: Main JavaScript file handling PDF rendering and highlighting
+- static/HLLY - Amendment no 1.pdf: Sample PDF file
+- static/HLLY - Amendment no 1.json: Coordinate data for highlights
+
+Technical Details:
+1. PDF.js Configuration:
+   - Scale: 1.5
+   - Default PDF dimensions: 612x792 points
+   - Viewport dimensions: 918x1188 (scaled)
+   - Container dimensions: ~533x409
+
+2. Coordinate Systems:
+   - PDF space: Origin at bottom-left (0,0)
+   - Screen space: Origin at top-left (0,0)
+   - Example coordinate: (274.6066, 732.6672) → "ARTICLE I"
+
+3. Transformation Solution:
+```javascript
+// Normalize to 0-1 range
+normalizedX = pdfX / 612
+normalizedY = pdfY / 792
+
+// Convert to container space
+screenX = normalizedX * containerWidth
+screenY = (1 - normalizedY) * containerHeight
+```
+
+4. Key Implementation Details:
+   - Uses container.getBoundingClientRect() for dynamic sizing
+   - Maintains highlight position during window resizing
+   - Properly scales highlight dimensions
+   - Handles coordinate system conversion correctly
+
+5. Debug Information:
+   - Container/Canvas ratio: x≈0.58, y≈0.34
+   - Example transformation: PDF(274.6, 732.7) → Screen(239.2, 30.7)
+
+Common Issues:
+1. Initial incorrect positioning (412,89) due to canvas vs container size mismatch
+2. Coordinate system confusion between PDF and screen space
+3. Scaling issues during window resize
+
+Solution Verification:
+1. Debug points appear in correct positions
+2. Highlight maintains position relative to text
+3. Proper scaling during window/container resizing
+
+Dependencies:
+- PDF.js v3.11.174
+- FastAPI backend
+- React frontend 
