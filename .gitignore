@@ -1,5 +1,6 @@
 # Data files
-static/data/
+static/data/*.pdf
+static/data/*.json
 
 # Python
 __pycache__/
