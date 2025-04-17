@@ -1,54 +1,74 @@
-# PDF Viewer with Highlighting
+# PDF Viewer with Text Highlighting
 
-A web application that allows viewing PDFs with the ability to highlight specific regions and navigate through document outlines.
+A FastAPI and JavaScript-based PDF viewer application that loads PDFs and highlights text regions based on coordinate data from a JSON file.
 
 ## Features
 
-- PDF viewing using PDF.js
-- Document outline navigation
-- Region highlighting with coordinates
-- Two-panel interface with controls and outline
-- FastAPI backend for PDF structure and highlighting
+- PDF viewing with PDF.js
+- Interactive table of contents
+- Text highlighting based on coordinates
+- Search functionality
+- Clean, modern UI
 
 ## Setup
 
-1. Install Python dependencies:
+1. Install uv (if not already installed):
 ```bash
-pip install -r requirements.txt
+pip install uv
 ```
 
-2. Run the FastAPI server:
+2. Create and activate a new virtual environment:
 ```bash
-python backend/main.py
+uv venv
+source .venv/bin/activate  # On Unix/macOS
+# or
+.venv\Scripts\activate  # On Windows
 ```
 
-3. Open your browser and navigate to:
+3. Install dependencies:
+```bash
+uv pip install -r requirements.txt
 ```
-http://localhost:8000/static/index.html
+
+4. Place your data files:
+   - Put your PDF and JSON files in `static/data/` directory
+   - See `static/data/README.md` for the expected file structure
+
+## Running the Application
+
+1. Start the FastAPI server:
+```bash
+uvicorn backend.main:app --reload
 ```
 
-## Usage
+2. Open your browser and navigate to:
+```
+http://localhost:8000
+```
 
-1. The left panel contains two tabs:
-   - Outline: Shows the document structure
-   - Controls: Allows manual input of page numbers and coordinates
+## Development
 
-2. To highlight a region:
-   - Enter the page number
-   - Enter the coordinates (comma-separated)
-   - Click "Highlight Region"
+The application uses:
+- FastAPI for the backend
+- PDF.js for PDF rendering
+- Vanilla JavaScript for the frontend
+- CSS for styling
 
-3. To navigate using the outline:
-   - Click on any item in the outline
-   - The PDF will scroll to the corresponding page
-   - If the section has coordinates, the region will be highlighted
+### Project Structure
 
-## File Structure
+```
+├── backend/
+│   └── main.py           # FastAPI application
+├── static/
+│   ├── data/            # PDF and JSON files (gitignored)
+│   ├── app.js           # PDF viewer logic
+│   ├── OutlineView.js   # Table of contents component
+│   ├── init.js          # Application initialization
+│   ├── styles.css       # Main styles
+│   └── OutlineView.css  # Table of contents styles
+└── requirements.txt     # Python dependencies
+```
 
-- `backend/main.py`: FastAPI server implementation
-- `static/index.html`: Frontend HTML template
-- `static/app.js`: Frontend JavaScript implementation
-- `HLLY - Amendment no 1.pdf`: Example PDF file
-- `HLLY - Amendment no 1.json`: PDF structure data 
+## License
 
-274.6066,                             732.6672000000001,                             317.32660000000004,                             723.7672
+MIT
