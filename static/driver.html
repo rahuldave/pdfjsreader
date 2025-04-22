@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF Controller</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .button-container {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .coords-input {
+            margin: 10px 0;
+            padding: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <h1>PDF Viewer Controller</h1>
+    
+    <div class="button-container">
+        <input type="number" id="pageInput" placeholder="Page number" class="coords-input">
+        <input type="text" id="coordsInput" placeholder="Coordinates (x1,y1,x2,y2)" class="coords-input">
+        <button onclick="navigateToCustom()">Navigate to Location</button>
+    </div>
+
+    <div class="button-container">
+        <h3>Quick Links:</h3>
+        <button onclick="navigateTo(23, '116.7,671.2572,280.4811,662.3571999999999')">Show "Acceptable Intercreditor Agreement" Definition</button>
+        <button onclick="navigateTo(23, '134.7,691.7272,567.2761738,682.8272')">Show "Section 1.01 Defined Terms"</button>
+    </div>
+    
+    <script>
+        let viewerWindow = null;
+        let isViewerReady = false;
+        let pendingNavigation = null;
+        
+        function openViewer() {
+            if (!viewerWindow || viewerWindow.closed) {
+                viewerWindow = window.open('viewer.html', 'pdfViewer');
+                isViewerReady = false;
+                pendingNavigation = null;
+            }
+            return viewerWindow;
+        }
+        
+        function navigateTo(page, coords) {
+            const win = openViewer();
+            
+            if (isViewerReady) {
+                console.log('Viewer is ready, sending navigation');
+                win.postMessage({
+                    type: 'navigate',
+                    page: page,
+                    coords: coords
+                }, '*');
+            } else {
+                console.log('Viewer not ready yet, queuing navigation');
+                pendingNavigation = { page, coords };
+                // Also pass coordinates in URL for initial load
+                win.location.href = `viewer.html?page=${page}&coords=${coords}`;
+            }
+        }
+
+        function navigateToCustom() {
+            const page = document.getElementById('pageInput').value;
+            const coords = document.getElementById('coordsInput').value;
+            
+            if (page && coords) {
+                navigateTo(parseInt(page), coords);
+            } else {
+                alert('Please enter both page number and coordinates');
+            }
+        }
+
+        // Listen for viewer ready message
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'viewerReady') {
+                console.log('Viewer is ready');
+                isViewerReady = true;
+                if (pendingNavigation) {
+                    console.log('Applying pending navigation');
+                    navigateTo(pendingNavigation.page, pendingNavigation.coords);
+                    pendingNavigation = null;
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

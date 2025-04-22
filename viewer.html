@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF Region Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        #pdf-container {
+            position: relative;
+            border: 1px solid #ccc;
+            margin: 20px;
+        }
+        .highlight-overlay {
+            position: absolute;
+            background-color: rgba(255, 255, 0, 0.3);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="pdf-container">
+        <canvas id="pdf-viewer"></canvas>
+    </div>
+
+    <script>
+        // Initialize PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        async function initPDF() {
+            // Get query parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const page = parseInt(urlParams.get('page')) || 1;
+            const coordinates = urlParams.get('coords')?.split(',').map(Number) || [];
+
+            if (coordinates.length !== 4) {
+                console.error('Invalid coordinates. Format should be: x1,y1,x2,y2');
+                return;
+            }
+
+            try {
+                // Load the PDF (replace with your PDF path)
+                const loadingTask = pdfjsLib.getDocument('/static/HLLY - Amendment no 1.pdf');
+                const pdf = await loadingTask.promise;
+
+                // Get the specified page
+                const pdfPage = await pdf.getPage(page);
+                
+                // Set up canvas
+                const canvas = document.getElementById('pdf-viewer');
+                const context = canvas.getContext('2d');
+                
+                // Set scale for better resolution
+                const scale = 1.5;
+                const viewport = pdfPage.getViewport({ scale });
+
+                // Set canvas dimensions
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                // Render the PDF page
+                await pdfPage.render({
+                    canvasContext: context,
+                    viewport: viewport
+                }).promise;
+
+                // Create highlight overlay
+                const highlight = document.createElement('div');
+                highlight.className = 'highlight-overlay';
+                
+                // Position the highlight (coordinates are normalized, multiply by viewport dimensions)
+                highlight.style.left = `${coordinates[0] * viewport.width}px`;
+                highlight.style.top = `${coordinates[1] * viewport.height}px`;
+                highlight.style.width = `${(coordinates[2] - coordinates[0]) * viewport.width}px`;
+                highlight.style.height = `${(coordinates[3] - coordinates[1]) * viewport.height}px`;
+
+                document.getElementById('pdf-container').appendChild(highlight);
+            } catch (error) {
+                console.error('Error loading PDF:', error);
+            }
+        }
+
+        window.addEventListener('load', initPDF);
+    </script>
+</body>
+</html> 

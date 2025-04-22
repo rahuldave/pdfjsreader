@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF Region Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+        }
+        #pdf-container {
+            position: relative;
+            margin: 0 auto;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        canvas {
+            display: block;
+        }
+        .highlight {
+            position: absolute;
+            background-color: rgba(255, 255, 0, 0.3);
+            border: 2px solid yellow;
+            pointer-events: none;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="pdf-container">
+        <canvas id="pdf-viewer"></canvas>
+    </div>
+
+    <script>
+        // Initialize PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        let pdfDoc = null;
+        let currentPage = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+        let scale = 1.5;
+        let canvas = document.getElementById('pdf-viewer');
+        let ctx = canvas.getContext('2d');
+        let currentHighlightCoordinates = null;
+        let isInitialized = false;
+
+        // Function to handle messages from other windows
+        function handleMessage(event) {
+            if (event.data && event.data.type === 'navigate') {
+                const { page, coords } = event.data;
+                if (page && coords) {
+                    console.log('Navigation requested:', { page, coords });
+                    currentPage = page;
+                    currentHighlightCoordinates = coords.split(',').map(Number);
+                    
+                    if (isInitialized) {
+                        queueRenderPage(currentPage);
+                    } else {
+                        console.log('Waiting for initialization before applying coordinates');
+                    }
+                }
+            }
+        }
+
+        // Load PDF
+        async function loadPDF() {
+            try {
+                console.log('Loading PDF...');
+                const loadingTask = pdfjsLib.getDocument('/static/data/HLLY - Amendment no 1.pdf');
+                pdfDoc = await loadingTask.promise;
+                console.log('PDF loaded, total pages:', pdfDoc.numPages);
+                
+                // Check for initial coordinates in URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const initialPage = parseInt(urlParams.get('page'));
+                const initialCoords = urlParams.get('coords');
+                
+                if (initialPage && initialCoords) {
+                    currentPage = initialPage;
+                    currentHighlightCoordinates = initialCoords.split(',').map(Number);
+                    console.log('Initial coordinates from URL:', { page: currentPage, coords: currentHighlightCoordinates });
+                }
+                
+                isInitialized = true;
+                renderPage(currentPage);
+                
+                // Notify parent window that we're ready
+                if (window.opener) {
+                    window.opener.postMessage({ type: 'viewerReady' }, '*');
+                }
+            } catch (error) {
+                console.error('Error loading PDF:', error);
+            }
+        }
+
+        // Render page
+        function renderPage(num) {
+            console.log('Rendering page:', num);
+            pageRendering = true;
+            pdfDoc.getPage(num).then(function(page) {
+                const viewport = page.getViewport({ scale: scale });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+
+                const renderTask = page.render(renderContext);
+                renderTask.promise.then(function() {
+                    pageRendering = false;
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                    // Reapply highlight after page render
+                    if (currentHighlightCoordinates) {
+                        console.log('Reapplying highlight after render:', currentHighlightCoordinates);
+                        applyHighlight(currentHighlightCoordinates);
+                        // Scroll to the highlighted area
+                        scrollToHighlight();
+                    }
+                });
+            });
+        }
+
+        // Function to scroll to the highlighted area
+        function scrollToHighlight() {
+            const highlight = document.querySelector('.highlight');
+            if (highlight) {
+                const container = document.getElementById('pdf-container');
+                const highlightRect = highlight.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                
+                // Calculate the scroll position to center the highlight
+                const scrollTop = highlight.offsetTop - (containerRect.height - highlightRect.height) / 2;
+                
+                // Smooth scroll to the position
+                container.scrollTo({
+                    top: scrollTop,
+                    behavior: 'smooth'
+                });
+                
+                console.log('Scrolling to highlight:', {
+                    highlightTop: highlight.offsetTop,
+                    scrollTop: scrollTop,
+                    containerHeight: containerRect.height
+                });
+            }
+        }
+
+        // Queue page rendering
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        // Apply highlight with current viewport
+        function applyHighlight(coordinates) {
+            if (!coordinates || !Array.isArray(coordinates) || coordinates.length !== 4) {
+                console.error('Invalid coordinates format:', coordinates);
+                return;
+            }
+
+            // Remove existing highlights
+            document.querySelectorAll('.highlight').forEach(el => el.remove());
+
+            // Get current viewport
+            pdfDoc.getPage(currentPage).then(function(page) {
+                const viewport = page.getViewport({ scale: scale });
+                const container = document.getElementById('pdf-container');
+                const canvas = document.getElementById('pdf-viewer');
+
+                // Get container dimensions
+                const containerRect = container.getBoundingClientRect();
+                
+                // Calculate the scale ratio between container and canvas
+                const scaleRatio = {
+                    x: containerRect.width / canvas.width,
+                    y: containerRect.height / canvas.height
+                };
+                
+                console.log('Dimensions:', {
+                    container: {
+                        width: containerRect.width,
+                        height: containerRect.height
+                    },
+                    canvas: {
+                        width: canvas.width,
+                        height: canvas.height
+                    },
+                    ratio: scaleRatio
+                });
+                
+                // Get coordinates [x1, y1, x2, y2] from PDF space
+                const [x1, y1, x2, y2] = coordinates;
+                
+                // Convert PDF coordinates to container-relative coordinates
+                // 1. First normalize to 0-1 range in PDF space
+                const normalizedX = x1 / 612;  // PDF width
+                const normalizedY = y1 / 792;  // PDF height
+                
+                // 2. Convert to container space
+                const x = normalizedX * containerRect.width;
+                const y = (1 - normalizedY) * containerRect.height;  // Flip Y coordinate
+                
+                // 3. Calculate dimensions in container space
+                const w = ((x2 - x1) / 612) * containerRect.width;
+                const h = ((y1 - y2) / 792) * containerRect.height;
+
+                console.log('Coordinate Transformation:', {
+                    pdf: {
+                        raw: [x1, y1, x2, y2],
+                        normalized: [normalizedX, normalizedY]
+                    },
+                    container: {
+                        position: [x, y],
+                        size: [w, h]
+                    }
+                });
+
+                // Create highlight
+                const highlight = document.createElement('div');
+                highlight.className = 'highlight';
+                highlight.style.position = 'absolute';
+                highlight.style.left = `${x}px`;
+                highlight.style.top = `${y}px`;
+                highlight.style.width = `${w}px`;
+                highlight.style.height = `${h}px`;
+                
+                container.appendChild(highlight);
+            });
+        }
+
+        // Handle window resize
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                console.log('Window resized, re-rendering page');
+                renderPage(currentPage);
+            }, 100);
+        });
+
+        // Listen for messages from other windows
+        window.addEventListener('message', handleMessage);
+
+        // Initialize when loaded
+        window.addEventListener('load', loadPDF);
+    </script>
+</body>
+</html> 
