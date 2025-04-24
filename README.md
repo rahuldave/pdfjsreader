@@ -69,6 +69,13 @@ The application uses:
 └── requirements.txt     # Python dependencies
 ```
 
+## Push to AWS
+
+```bash
+aws sso login
+aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/t0a9q9b2
+```
+
 ## License
 
-MIT
+TBD
